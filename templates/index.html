@@ -1,0 +1,265 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess AI Game</title>
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .board-container {
+            margin: 20px 0;
+        }
+        .game-info {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .btn {
+            padding: 8px 16px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        /* Chess board styles */
+        .chess-board {
+            width: 400px;
+            height: 400px;
+            border: 2px solid #333;
+        }
+        .chess-square {
+            width: 50px;
+            height: 50px;
+            float: left;
+        }
+        .white {
+            background-color: #f0d9b5;
+        }
+        .black {
+            background-color: #b58863;
+        }
+        .chess-piece {
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        /* Piece styles - Update these paths to match your local image structure */
+        .piece-wp { background-image: url('static/img/chesspieces/wikipedia/wp.png'); }
+        .piece-wn { background-image: url('static/img/chesspieces/wikipedia/wn.png'); }
+        .piece-wb { background-image: url('static/img/chesspieces/wikipedia/wb.png'); }
+        .piece-wr { background-image: url('static/img/chesspieces/wikipedia/wr.png'); }
+        .piece-wq { background-image: url('static/img/chesspieces/wikipedia/wq.png'); }
+        .piece-wk { background-image: url('static/img/chesspieces/wikipedia/wk.png'); }
+        .piece-bp { background-image: url('static/img/chesspieces/wikipedia/bp.png'); }
+        .piece-bn { background-image: url('static/img/chesspieces/wikipedia/bn.png'); }
+        .piece-bb { background-image: url('static/img/chesspieces/wikipedia/bb.png'); }
+        .piece-br { background-image: url('static/img/chesspieces/wikipedia/br.png'); }
+        .piece-bq { background-image: url('static/img/chesspieces/wikipedia/bq.png'); }
+        .piece-bk { background-image: url('static/img/chesspieces/wikipedia/bk.png'); }
+
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chess AI Game</h1>
+        <div class="game-info" id="gameInfo">
+            <p>Status: <span id="status">Game in progress</span></p>
+            <p>Last move: <span id="lastMove">None</span></p>
+        </div>
+        <div class="board-container">
+            <div id="board" class="chess-board"></div>
+        </div>
+        <div class="controls">
+            <button class="btn" id="startBtn">New Game</button>
+            <button class="btn" id="undoBtn">Undo Move</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    
+    <script>
+        let game = new Chess();
+        let playerColor = 'w';
+        let selectedSquare = null;
+
+        function createBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `chess-square ${(row + col) % 2 === 0 ? 'white' : 'black'}`;
+                    
+                    const squareId = String.fromCharCode(97 + col) + (8 - row);
+                    square.id = squareId;
+                    
+                    const piece = document.createElement('div');
+                    piece.className = 'chess-piece';
+                    square.appendChild(piece);
+                    
+                    square.addEventListener('click', () => handleSquareClick(squareId));
+                    board.appendChild(square);
+                }
+            }
+            updateBoard();
+        }
+
+        function updateBoard() {
+            const position = game.board();
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = String.fromCharCode(97 + col) + (8 - row);
+                    const piece = position[row][col];
+                    const pieceDiv = document.querySelector(`#${square} .chess-piece`);
+                    
+                    if (piece) {
+                        const color = piece.color;
+                        const type = piece.type;
+                        pieceDiv.className = `chess-piece piece-${color}${type}`;
+                    } else {
+                        pieceDiv.className = 'chess-piece';
+                    }
+                }
+            }
+        }
+
+        async function handleSquareClick(square) {
+            if (game.game_over()) return;
+            if (game.turn() !== playerColor) return;
+
+            if (selectedSquare === null) {
+                const piece = game.get(square);
+                if (piece && piece.color === playerColor) {
+                    selectedSquare = square;
+                    document.getElementById(square).style.backgroundColor = '#aaffaa';
+                }
+            } else {
+                const move = {
+                    from: selectedSquare,
+                    to: square,
+                    promotion: 'q'
+                };
+
+                try {
+                    const result = game.move(move);
+                    if (result) {
+                        updateBoard();
+                        document.getElementById('lastMove').textContent = 
+                            `${selectedSquare}-${square}`;
+                        await makeAIMove();
+                    }
+                } catch (e) {
+                    console.log('Invalid move:', e);
+                }
+
+                // Reset selection
+                document.getElementById(selectedSquare).style.backgroundColor = 
+                    ((selectedSquare.charCodeAt(0) - 97) + (8 - parseInt(selectedSquare[1]))) % 2 === 0 
+                        ? '#f0d9b5' : '#b58863';
+                selectedSquare = null;
+            }
+            
+            updateStatus();
+        }
+
+        async function makeAIMove() {
+            if (game.game_over()) return;
+
+            try {
+                const response = await fetch('/api/make_move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ fen: game.fen() })
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success' || data.status === 'game_over') {
+                    game.move(data.move, { sloppy: true });
+                    updateBoard();
+                    document.getElementById('lastMove').textContent = data.move;
+                    
+                    if (data.status === 'game_over') {
+                        document.getElementById('status').textContent = 
+                            `Game Over - ${data.reason}`;
+                    }
+                } else {
+                    console.error('Error:', data.message);
+                }
+            } catch (error) {
+                console.error('Error making AI move:', error);
+            }
+
+            updateStatus();
+        }
+
+        function updateStatus() {
+            let status = '';
+
+            if (game.in_checkmate()) {
+                status = 'Game over, ' + 
+                    (game.turn() === 'w' ? 'black' : 'white') + 
+                    ' wins by checkmate';
+            } else if (game.in_draw()) {
+                status = 'Game over, drawn position';
+            } else {
+                status = (game.turn() === 'w' ? 'White' : 'Black') + ' to move';
+                if (game.in_check()) {
+                    status += ', ' + 
+                        (game.turn() === 'w' ? 'White' : 'Black') + 
+                        ' is in check';
+                }
+            }
+
+            document.getElementById('status').textContent = status;
+        }
+
+        function initGame() {
+            game = new Chess();
+            createBoard();
+            updateStatus();
+
+            if (playerColor === 'b') {
+                makeAIMove();
+            }
+        }
+
+        document.getElementById('startBtn').addEventListener('click', initGame);
+        document.getElementById('undoBtn').addEventListener('click', () => {
+            game.undo();
+            game.undo();
+            updateBoard();
+            updateStatus();
+        });
+
+        // Initialize the game when the page loads
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>

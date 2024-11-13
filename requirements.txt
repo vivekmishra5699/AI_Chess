@@ -1,0 +1,5 @@
+tensorflow
+python-chess
+Flask
+numpy
+tqdm
