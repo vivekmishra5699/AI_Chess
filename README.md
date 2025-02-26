@@ -6,7 +6,6 @@ AI Chess is an advanced chess-playing artificial intelligence that utilizes deep
 
 - AI-powered chess engine trained using deep reinforcement learning
 - Implements AlphaZero-style training with self-play and neural networks
-- Uses Stockfish for evaluation and benchmarking
 - Flask-based backend for serving AI moves via API
 - Web-based UI for playing against the AI
 
@@ -60,9 +59,6 @@ This will start the reinforcement learning process.
 
 Feel free to contribute by creating issues and pull requests.
 
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
 
 ## Author
 
